@@ -3,7 +3,13 @@
 // CONTACT:             Manuel António Caetano Azevedo - manuelcaetano40@gmail.com - https://www.linkedin.com/in/im-manuel-azevedo/
 // UNIVERSITY:          UBI, Faculdade de Engenharia
 
-
+//--------------------------------------------- Code structure and information ----------------------------------------------------
+// This code was made to control and collect data from an Engine Test Bench (ETB). The ETB was developed as a master's dissertation
+// at University of Beira Interior. The ETB will have, in this version, 2 different modes of operation, "Static" and "Manual". The 
+// static mode is automatic with just the selection of the initial load and minimum rpm needed. On the "manual" mode the test is done
+// manually with the user having to select the load.
+// The code is structured in levels on loop() and steps on the different modes functions. Every time a task is completed the step or 
+// level value is incremented until it is needed to return to a previous level/step.
 
 
 #include "HX711.h"                                                        // Library used to get data from the HX711 amplifier
@@ -102,14 +108,14 @@ void setup() {
   pinMode(selectPin, INPUT_PULLUP);                                     // Button used to select and confirm modes and values
   pinMode(setPin, INPUT_PULLUP);                                        // Button used to tare the scale
   pinMode(rstPin, INPUT_PULLUP);                                        // Emergency stop button
-
+  pinMode(rpmPin, INPUT_PULLUP);                                        // pin used for the Hall sensor signal
   
-  pinMode(rpmPin, INPUT_PULLUP);                                        //
-  attachInterrupt(digitalPinToInterrupt(rpmPin), countRpm, RISING);
+  attachInterrupt(digitalPinToInterrupt(rpmPin), countRpm, RISING);     // Interrupt used to call function countRPM() everytime there is
+                                                                        // signal from the Hall Sensor
   
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);                       // Start link with HX711
-  scale.tare();                                                           // Tare scale to zero
-  scale.set_scale(Calibration);                                           // Adjust scale to calibration factor
+  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);                     // Start link with HX711
+  scale.tare();                                                         // Tare scale to zero
+  scale.set_scale(Calibration);                                         // Adjust scale to calibration factor
 
   Serial.begin(9600);
   
