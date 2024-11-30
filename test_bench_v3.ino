@@ -132,6 +132,12 @@ void setup() {
 }
 
 void loop() {
+    // In the loop() only the main things are done. These includes selecting the mode of operation, Tare the load cell
+    // and emergency stoping the ETB. In "level" 1 the joystick is used to walk trough the different modes and when
+    // the middle button is pressed the mode is selected and "level" is incremented to 2. When this happen the select-
+    // ed mode function is called.
+
+    
   if (level == 1) {
     // Check the "up" button
     if (digitalRead(upPin) == LOW && millis() - lastDebounceTime > debounceDelay) {
@@ -162,7 +168,7 @@ void loop() {
     } else if (menuIndex == 1) {
       lcd.clear();
       lcd.setCursor(0,0);
-      lcd.print("Ainda nao feito!");
+      lcd.print("Still not done");
       delay(3000);
       level = 1;
       updateMenu();
@@ -170,7 +176,11 @@ void loop() {
       manual();
     }
   }
-  // Check the tare button state
+
+    
+  // In each loop, the tare and emergency buttons are checked. If any of them is pressed,
+  // according action is taken.
+    
   int tareButtonState = digitalRead(setPin);  // Read the button on pin 43
   
   // Check for button press (high to low transition)
@@ -204,28 +214,33 @@ void loop() {
 
 
 void updateMenu() {
-  lcd.clear(); // Limpa o LCD
+  // This function prints to the LCD the Current Menu option. Each time the joystick is used
+  // "menuIndex" value changes and the different option appear on the bottom line of the LCD  
+    
+  lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Menu: ");
   
   switch (menuIndex) {
     case 0:
       lcd.setCursor(0, 1);
-      lcd.print("1- Estatico");
+      lcd.print("1 - Estatico");
       break;
     case 1:
       lcd.setCursor(0, 1);
-      lcd.print("2- Transiente");
+      lcd.print("2 - Transiente");
       break;
     case 2:
       lcd.setCursor(0, 1);
-      lcd.print("3- Manual");
+      lcd.print("3 - Manual");
       break;
   }
 }
 
 void selectMenuItem() {
-  //Actions for when the pushbutton is pressed
+  // Actions for when the "middle" button of the joystick is pressed, selecting the mode of
+  // operation 
+    
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Selecionado!");
