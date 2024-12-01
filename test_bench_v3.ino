@@ -251,6 +251,8 @@ void selectMenuItem() {
 
 void estatico()
 {
+  // This function corresponds to the static mode of testing. In this mode, the first var-
+  //  iables, Current and RPM are selected.  
   if(step == 0){
     current();
     step = 1;
