@@ -252,7 +252,9 @@ void selectMenuItem() {
 void estatico()
 {
   // This function corresponds to the static mode of testing. In this mode, the first var-
-  //  iables, Current and RPM are selected.  
+  // iables, Current and RPM are selected. To select these values, a joystick is used.
+  // After each value is selected the value "step" is incremented and the function conti-
+  // nues. 
   if(step == 0){
     current();
     step = 1;
@@ -263,9 +265,9 @@ void estatico()
   int upState, downState, selectState;
 
   // Read the joystick directions and button state
-  upState = digitalRead(upPin);      // Replace with actual joystick up pin
-  downState = digitalRead(downPin);  // Replace with actual joystick down pin
-  selectState = digitalRead(selectPin);  // Replace with actual joystick button pin
+  upState = digitalRead(upPin);      
+  downState = digitalRead(downPin);  
+  selectState = digitalRead(selectPin);
 
   // Adjust initial_current based on up/down movement
   if (upState == LOW && initial_current < 30) {  // Joystick up pressed
@@ -358,6 +360,10 @@ void estatico()
   else if(step == 4)
   {
     // POWER SUPPLY START-UP
+    // The start-up of the Power Supply is done through the potentiometer.
+    // With the current value selected, an average of 10 current values is conducted
+    // to ensure that the current on the coil is the selected.
+      
     sum = 0;   // Reset sum to zero before starting
 
     for (int i = 1; i <= 10; i++) {
@@ -377,6 +383,7 @@ void estatico()
     } else if (average_current - initial_current > 0.5) {           // If average current is greater than target (above threshold)
       Pot.decrease(1);                                                // Decrement potentiometer
     } else {
+    // when the average is equal to the value selected, "step" is increment and the sequence continues
       step = 5;
       time = millis();
       time_abs = millis();
@@ -385,6 +392,8 @@ void estatico()
   }
   else if(step == 5)
   {
+    // During on minute the function "Collect_Data()" is called and data is collected
+      
     if (millis() - time < 60000)
     {
       strcpy(type, "static");
@@ -398,15 +407,21 @@ void estatico()
   }
   else if(step == 6)
   {
+    // the load is incremented by one step and data continues to be collected
+    // in order to see the response of the engine to the change of load  
+    
     int load_increment = 1;
-    // processo de Aumento de corrente
-    Pot.increase(1);
+    Pot.increase(load_increment);
+    
     step = 7;
     Collect_Data();
     time = millis();
   }
   else if(step == 7)
   {
+    // for 2 seconds data is collected which gives time for the engine to stabilize
+    // on the new load
+      
     if(millis() - time < 2000){
       lcd.clear();
       lcd.setCursor(0,0);
@@ -414,27 +429,26 @@ void estatico()
       Collect_Data();
     }
 
-    RPM();
+    RPM();                    // the rpm of the engine under the new load is calculated
     int rpm_test = rpm;
 
     Collect_Data();
 
-    if (rpm_min < rpm_test)
-    {
+    if (rpm_min < rpm_test)   // if the rpm of the engine is greater than the minimum selected
+    {                         // the test sequence may continue, returning to step 5
       step = 5;
       time = millis();
     }
-    else
-    {
-      level = 1;
-      step = 1;
+    else                      // if the rpm of the engine is lower than the value selected, the
+    {                         // the test has to be stopped to avoid stalling/damaging the engine.
+      level = 1;              // "level" and "step" must return to 1 and 0 respectively and the di 
+      step = 0;               // gital potentiometer must return to 0.
       lcd.clear();
       lcd.setCursor(0,0);
       lcd.print("Limite atingido!");
       lcd.setCursor(0,1);
       lcd.print("Teste parado!");
       delay(1000);
-      //Serial.println("Atingido limite mínimo, teste parado!");
       updateMenu();
       Pot.set(0);
       reps = 0;
@@ -447,6 +461,14 @@ void estatico()
 
 void manual()
 {
+  // In this function the inputs in the joystick translate directly into current at the coil.
+  // Because of that it was deemed necessary to remind the operator to not exceed the limits
+  // of the engine in step 1.
+  // The function works by collectin data using the "Collect_Data()" function and checking in
+  // each loop if the up or down button of the joystick has been pressed. If that is true,
+  // then the current is incremented or decremented, respectively. If the middle button is 
+  // pressed the function is terminated. For that "level" and "step" must be set to 1 and 0 and
+  // the digital potentiometer must be set to 0.  
   if (step == 0)
   {
     lcd.clear();
@@ -454,10 +476,8 @@ void manual()
     lcd.print("Cuidado!");
     lcd.setCursor(0,1);
     lcd.print("Nao ha limite!");
-    //Serial.println("Atenção, neste teste não há limite!");
-    //Serial.println("Cuidado para não danificar o motor!");
+      
     delay(2000);
-
     step = 1;
   }
   else if (step == 1)
@@ -502,8 +522,9 @@ void manual()
           lcd.print("Voltar ao menu!");
           //Serial.println("A voltar ao menu principal");
           level = 1;
-          step = 1;
+          step = 0;
           buttonPressedFor5Seconds = false; // Reset flag
+          Pot.set(0);  
           reps = 0;
           delay(1500);
           updateMenu();
@@ -516,6 +537,8 @@ void manual()
 
 void current()
 {
+  // function to display the value of the current during the selection process
+    
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Corrente inicial");
@@ -525,14 +548,14 @@ void current()
 }
 
 void rpm_selecter() {
+  // function to display the value of the minimum rpm during the selection process
+    
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("RPM minimas");
   lcd.setCursor(0,1);
-  rpm_adjusted = round(rpm_min/50)*50;
+  rpm_adjusted = round(rpm_min/50)*50;        // this step is done to round the value of rpm to the nearest 50
   lcd.print(rpm_adjusted);
-  //Serial.print("RPM mínimas = ");
-  //Serial.println(rpm_adjusted);
 }
 
 void countRpm() {
@@ -551,33 +574,35 @@ void RPM()
 
 void Collect_Data()
 {
-  time_now = seconds() - time_abs/1000.0;
+  time_now = seconds() - time_abs/1000.0;                          // time since the start of the first test
   // Load Cell Code
   // Read the weight
-  Mass = scale.get_units(3); // Average of 10 readings
-  Weight = Mass * 1e-3 * 9.80665;
+  Mass = scale.get_units(3);                                       // Average of 3 readings
+  Weight = Mass * 1e-3 * 9.80665;                                  // Conversion of mass into weight
   Torque = Weight * Distance; 
       
-  int sensorValue = analogRead(current_pin);                        // Reads the OUT pin from the current sensor
-  float voltage = sensorValue * (4.820 / 1023.0);                     // Convert the analog reading to voltage
+  int sensorValue = analogRead(current_pin);                       // Reads the OUT pin from the current sensor
+  float voltage = sensorValue * (4.820 / 1023.0);                  // Convert the analog reading to voltage
   current_load = (voltage - vOffset) / sensitivity;                // Calculate the current from the power supply
 
-  int sensorValue2 = analogRead(current_pin2);                       //Reads the out pin from the current sensor
+  int sensorValue2 = analogRead(current_pin2);                     //Reads the out pin from the current sensor
   float voltage2 = sensorValue2 * (4.820/1023);
   current_load2 = (voltage2 - vOffset) /sensitivity;
 
-  RPM();                                                             // Calculate the engine RPM 
+  RPM();                                                           // Calculate the engine RPM 
 
   Total_Power = Torque * rpm;
 
   if (reps == 0)
   {
+    // Prints a header if it is the first rep of testing with is column data and unit.  
     Serial.println("type,Load current,Duration,RPM,Mass [g],Weight [N],Torque[Nm],Total Power [W],Current Consumed by motor[A]");
     reps = 1;
   }
 
 
-  // Print the RPM and weight on the Serial Monitor
+  // Print all data into the serial monitor. To record this any recording software can be used.
+  // Data is printed in order to be recorded as a .csv for easier handling.  
   Serial.print(type);
   Serial.print(",");
   Serial.print(current_load);
@@ -597,6 +622,9 @@ void Collect_Data()
   Serial.println(current_load2);
 
   if (step == 5 || step == 1){
+    // To ensure that all important information is displayed in the LCD during steps 6 and 7 this
+    // this conditional statement is implemented. 
+      
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("RPM:");
