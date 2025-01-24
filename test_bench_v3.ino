@@ -17,17 +17,26 @@
 #include <LiquidCrystal_I2C.h>                                            // Library used for I2C module and LCD
 #include <string.h>                                                       // Library used to better manipulate strings
 #include <DigiPotX9Cxxx.h>                                                // Library for easier use of X9c102 potentiometer
+#include <Adafruit_INA219.h>                                              // Library for use of the INA219 current sensor module
 #define seconds() (millis()/1000.0)                                       
 
-// Load Cell with HX711
-const int LOADCELL_DOUT_PIN = 4;                                          // Pin connected to DOUT of HX711
-const int LOADCELL_SCK_PIN = 3;                                           // Pin connected to SCK of HX711
-HX711 scale;                                                              // Start link with HX711
+// Load Cell for measurement of engine torque with HX711 module
+const int LOADCELL_DOUT_PIN = 10;                                          // Pin connected to DOUT of HX711
+const int LOADCELL_SCK_PIN = 11;                                           // Pin connected to SCK of HX711 
+HX711 scale_engine;                                                              // Start link with HX711
 float Calibration = 431.31;                                                // Calibration for load cell
 float Distance = 0.40;                                                    // Distance from the load cell to the axle
 float Mass;                                                               // Mass measured in grams
 float Weight;                                                             // Weight measured in Newtons
 float Torque;                                                             // Engine torque in N.m
+
+// Load Cell for fuel consumption measurement with HX711 module
+const int fuel_cell_DT_pin = 13;                                          // Pin connected to DOUT
+const int fuel_cell_SCK_pin = 12;                                         // Pin connected to SCK
+HX711 scale_fuel;                                                         // Start link with HX711
+float fuel_calibration = 431.31;                                          // Calibration for the load cell
+float fuel_mass;                                                          // fuel mass measured in grams
+
 
 // RPM measurements
 const int rpmPin = 2;                                                     // Pin 2 connected to hall sensor signal
@@ -67,10 +76,8 @@ int maxOutput = 4000;
 int increment = 100;
 
 //Current Sensor variables
-const int current_pin = A1;                                             // Pin used to read OUT of the current sensor
-const int current_pin2 = A2;                                            // Pin used to read the current used by the motor
-const float sensitivity = 0.066;                                        // Sensitivity of the sensor
-const float vOffset = 4.820/2;                                          // Voltage offset at 0 A of current
+Adafruit_INA219 ina219_coil(0x40);
+Adafruit_INA219 ina219_motor(0x41);
 float current_load = 0;
 float current_load2 = 0;
 float average_current = 0;
@@ -82,12 +89,12 @@ char type[7];                                                           // Strin
 int reps = 0;                                                           // Variable to know if the header is printed or not
 
 //Joystick variables
-const int upPin = 53;                                                   // Pin connected to the "up" button
-const int downPin = 51;                                                 // Pin connected to the "down" button
-const int selectPin = 45;                                               // Pin connected to the "select" button
-const int setPin = 43;                                                  // Pin connected to the "set" button
+const int upPin = 9;                                                   // Pin connected to the "up" button
+const int downPin = 8;                                                 // Pin connected to the "down" button
+const int selectPin = 3;                                               // Pin connected to the "select" button
+const int setPin = 7;                                                  // Pin connected to the "set" button
 int lastTareButtonState = HIGH; // Assuming active-low configuration
-const int rstPin = 41;                                                   // Pin connected to the "Reset" button
+const int rstPin = 6;                                                   // Pin connected to the "Reset" button
 
 //Digital potentiometer initialization
 DigiPot Pot(33,31,29);                                                     // Pins:(INC, U/D, CS)
@@ -102,6 +109,12 @@ int mapToIncrements(int value, int inMin, int inMax, int outMin, int outMax, int
 }
 
 void setup() {
+  lcd.init();                                                   // Start I2C link with LCD
+  lcd.backlight();                                              // Turn on LCD backlight
+
+  lcd.setCursor(0,0);
+  lcd.print("Starting checks");
+    
   // Definition of pin modes and activation of internal resistors
   pinMode(upPin, INPUT_PULLUP);                                         // "Up" button on the joystick
   pinMode(downPin, INPUT_PULLUP);                                       // "Down" button on the joystick
@@ -113,14 +126,22 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(rpmPin), countRpm, RISING);     // Interrupt used to call function countRPM() everytime there is
                                                                         // signal from the Hall Sensor
   
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);                     // Start link with HX711
-  scale.tare();                                                         // Tare scale to zero
-  scale.set_scale(Calibration);                                         // Adjust scale to calibration factor
+  scale_engine.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);              // Start link with HX711
+  scale_engine.tare();                                                  // Tare scale to zero
+  scale_engine.set_scale(Calibration);                                  // Adjust scale to calibration factor
+
+  scale_fuel.begin(fuel_cell_DT_pin, fuel_cell_SCK_pin);                // Start link with HX711
+  scale_fuel.tare();                                                    // Tare fuel scale to 0
+  scale_fuel.set_scale(fuel_calibration);                               // Adjust scale to calibration factor
+
+  ina219_coil.setCalibration_32V_2A();                                  //Calibrate the ina219 modules for the shunts used (50A, 75mV)
+  ina219_motor.setCalibration_32V_2A();                                 // for this custom calibration some changes had to be made to the library
+                                                                        // (see Adafruit_INA219.cpp)
 
   Serial.begin(9600);
-  
-  lcd.init();                                                   // Start I2C link with LCD
-  lcd.backlight();                                              // Turn on LCD backlight
+  delay(1000);
+
+  lcd.clear();  
   lcd.setCursor(0, 0);
   lcd.print(" The Dyno Bench ");                                // Delay routine to stabilize scale.tare
   lcd.setCursor(0, 1);
@@ -185,10 +206,11 @@ void loop() {
   
   // Check for button press (high to low transition)
   if (lastTareButtonState == HIGH && tareButtonState == LOW) {
-    scale.tare();  // Tare the load cell
+    scale_engine.tare();  // Tare the load cell
+    scale_fuel.tare();  
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("Load Cell Tared");
+    lcd.print("Load Cells Tared");
     delay(1000);  // Short delay to show feedback on the LCD
     updateMenu(); // Refresh the menu after taring
   }
