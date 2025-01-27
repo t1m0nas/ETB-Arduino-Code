@@ -45,6 +45,7 @@ float PrevTime = 0;                                                       // Tim
 float Duration = 0;                                                       // Time elapsed between magnet detection in microseconds
 double time = 0;                                                          // Used to count 60 seconds from the start of the test
 float time_abs = 0;                                                       // Variable used to record the absolute time in the "Collect_Data()" function
+float real_rpm = 0;
 
 //Power Measurements
 float Total_Power = 0;                                                    // Total power delivered to the axle
@@ -451,7 +452,7 @@ void estatico()
     }
 
     RPM();                    // the rpm of the engine under the new load is calculated
-    int rpm_test = rpm;
+    int rpm_test = rpm*4;
 
     Collect_Data();
 
@@ -598,7 +599,8 @@ void Collect_Data()
   time_now = seconds() - time_abs/1000.0;                          // time since the start of the first test
   // Load Cell Code
   // Read the weight
-  Mass = scale_engine.get_units(3);                                // Average of 3 readings from the test bench load cell
+  Mass = scale_engine.get_units(3)/4;                              // Average of 3 readings from the test bench load cell 
+                                                                   // it also takes into account the 4:1 pulley system implemented
   Weight = Mass * 1e-3 * 9.80665;                                  // Conversion of mass into weight
   Torque = Weight * Distance;
 
@@ -610,9 +612,9 @@ void Collect_Data()
   current_load2 = ina219_motor.getShuntVoltage_mV()*50/75;          // Read the voltage output from the motor shunt
                                                                     // and calculate the current on the circuit
 
-  RPM();                                                           // Calculate the engine RPM 
+  real_rpm = RPM()*4;                                               // Calculate the engine shaft RPM 
 
-  Total_Power = Torque * rpm;
+  Total_Power = Torque * real_rpm;
 
   if (reps == 0)
   {
