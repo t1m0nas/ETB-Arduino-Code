@@ -389,9 +389,8 @@ void estatico()
     sum = 0;   // Reset sum to zero before starting
 
     for (int i = 1; i <= 10; i++) {
-      int sensorValue = analogRead(current_pin);                      // Read the current sensor pin
-      float voltage = sensorValue * (5.0 / 1023.0);                   // Convert analog reading to voltage
-      current_load = (voltage - vOffset) / sensitivity;               // Calculate the current
+      
+      current_load = ina219_coil.getShuntVoltage_mV()*50/75;               // Calculate the current
 
       sum += current_load;                                            // Accumulate current values
       delay(50);                                                      // Short delay between readings to smooth out noise
@@ -414,7 +413,7 @@ void estatico()
   }
   else if(step == 5)
   {
-    // During on minute the function "Collect_Data()" is called and data is collected
+    // During one minute the function "Collect_Data()" is called and data is collected
       
     if (millis() - time < 60000)
     {
@@ -599,17 +598,17 @@ void Collect_Data()
   time_now = seconds() - time_abs/1000.0;                          // time since the start of the first test
   // Load Cell Code
   // Read the weight
-  Mass = scale.get_units(3);                                       // Average of 3 readings
+  Mass = scale_engine.get_units(3);                                // Average of 3 readings from the test bench load cell
   Weight = Mass * 1e-3 * 9.80665;                                  // Conversion of mass into weight
-  Torque = Weight * Distance; 
-      
-  int sensorValue = analogRead(current_pin);                       // Reads the OUT pin from the current sensor
-  float voltage = sensorValue * (4.820 / 1023.0);                  // Convert the analog reading to voltage
-  current_load = (voltage - vOffset) / sensitivity;                // Calculate the current from the power supply
+  Torque = Weight * Distance;
 
-  int sensorValue2 = analogRead(current_pin2);                     //Reads the out pin from the current sensor
-  float voltage2 = sensorValue2 * (4.820/1023);
-  current_load2 = (voltage2 - vOffset) /sensitivity;
+  fuel_mass = scale_fuel.get_units(3);                             // Average of 3 readings from the fuel load cell  
+      
+  current_load = ina219_coil.getShuntVoltage_mV()*50/75;            // Read the voltage output from the coil 
+                                                                    // shunt and calculate the current on the circuit
+
+  current_load2 = ina219_motor.getShuntVoltage_mV()*50/75;          // Read the voltage output from the motor shunt
+                                                                    // and calculate the current on the circuit
 
   RPM();                                                           // Calculate the engine RPM 
 
@@ -618,7 +617,7 @@ void Collect_Data()
   if (reps == 0)
   {
     // Prints a header if it is the first rep of testing with is column data and unit.  
-    Serial.println("type,Load current,Duration,RPM,Mass [g],Weight [N],Torque[Nm],Total Power [W],Current Consumed by motor[A]");
+    Serial.println("type,Load current,Duration,RPM,Mass [g],Weight [N],Torque[Nm],Total Power [W],Current Consumed by motor[A],Fuel mass [g]");
     reps = 1;
   }
 
@@ -641,7 +640,9 @@ void Collect_Data()
   Serial.print(",");
   Serial.print(Total_Power);
   Serial.print(",");
-  Serial.println(current_load2);
+  Serial.print(current_load2);
+  Serial.print(",");
+  Serial.println(fuel_mass);  
 
   if (step == 5 || step == 1){
     // To ensure that all important information is displayed in the LCD during steps 6 and 7 this
