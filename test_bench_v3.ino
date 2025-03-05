@@ -16,8 +16,8 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>                                            // Library used for I2C module and LCD
 #include <string.h>                                                       // Library used to better manipulate strings
-#include <DigiPotX9Cxxx.h>                                                // Library for easier use of X9c102 potentiometer
 #include <Adafruit_INA219.h>                                              // Library for use of the INA219 current sensor module
+#include <SPI.h>
 #define seconds() (millis()/1000.0)                                       
 
 // Load Cell for measurement of engine torque with HX711 module
@@ -219,9 +219,9 @@ void loop() {
   lastTareButtonState = tareButtonState; // Update the last state
 
   // Check if Emergency Stop button (pin 41) is pressed
-  if (digitalRead(41) == LOW) {
+  if (digitalRead(rstPin) == LOW) {
     delay(50); // Debounce delay
-    if (digitalRead(41) == LOW) { // Confirm press
+    if (digitalRead(rstPin) == LOW) { // Confirm press
       // Stop all processes, reset states, and return to main menu
       level = 1; 
       step = 0; 
