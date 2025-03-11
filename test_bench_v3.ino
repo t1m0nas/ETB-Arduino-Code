@@ -63,7 +63,7 @@ bool buttonPressedFor5Seconds = false;                                    // To 
 
 //Selectors - variables used for selecting the mode of operation, the initial load and the minimum rpm
 int menuIndex = 0;
-const int numMenuItems = 3;
+const int numMenuItems = 2;
 int initial_current = 0;
 int rpm_min = 0;
 int new_rpm_min = 0;
@@ -188,13 +188,6 @@ void loop() {
     if (menuIndex == 0) {
       estatico();
     } else if (menuIndex == 1) {
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Still not done");
-      delay(3000);
-      level = 1;
-      updateMenu();
-    } else if (menuIndex == 2) {
       manual();
     }
   }
@@ -251,11 +244,7 @@ void updateMenu() {
       break;
     case 1:
       lcd.setCursor(0, 1);
-      lcd.print("2 - Transiente");
-      break;
-    case 2:
-      lcd.setCursor(0, 1);
-      lcd.print("3 - Manual");
+      lcd.print("2 - Manual");
       break;
   }
 }
