@@ -98,7 +98,8 @@ int lastTareButtonState = HIGH; // Assuming active-low configuration
 const int rstPin = 6;                                                   // Pin connected to the "Reset" button
 
 //Digital potentiometer initialization
-DigiPot Pot(33,31,29);                                                     // Pins:(INC, U/D, CS)
+int CS_PIN = 49;                                                        // Chip Select pin for MCP4231
+int wiperValue = 0;                                                     // Stores the current wiper position (0-127 for MCP4231)
 
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -150,7 +151,10 @@ void setup() {
   delay(1500);
   updateMenu();
 
-  Pot.set(0);                                                    // Set potentiometer to 0 in the beginning
+  SPI.begin();
+  pinMode(CS_PIN, OUTPUT);
+  digitalWrite(CS_PIN, HIGH);
+  setWiper(0);                                                  // Initialize wiper position
 }
 
 void loop() {
@@ -389,10 +393,10 @@ void estatico()
     average_current = sum / 10;                                       // Calculate the average current
 
     // Adjust potentiometer based on the average current
-    if (average_current - initial_current < -0.5) {                 // If average current is less than target (below threshold)
-      Pot.increase(1);                                                // Increment potentiometer
-    } else if (average_current - initial_current > 0.5) {           // If average current is greater than target (above threshold)
-      Pot.decrease(1);                                                // Decrement potentiometer
+    if (average_current - initial_current < -0.2) {                 // If average current is less than target (below threshold)
+      increasePot(1);                                                // Increment potentiometer
+    } else if (average_current - initial_current > 0.2) {           // If average current is greater than target (above threshold)
+      decreasePot(1);                                               // Decrement potentiometer
     } else {
     // when the average is equal to the value selected, "step" is increment and the sequence continues
       step = 5;
@@ -422,7 +426,7 @@ void estatico()
     // in order to see the response of the engine to the change of load  
     
     int load_increment = 1;
-    Pot.increase(load_increment);
+    increasePot(1); 
     
     step = 7;
     Collect_Data();
@@ -501,13 +505,13 @@ void manual()
 
     // Increment potentiometer value if the up button is pressed
     if (upState == LOW) {
-      Pot.increase(1);  // Increment
+      increasePot(1);   // Increment
       delay(50);  // Small delay for debouncing
     }
 
     // Decrement potentiometer value if the down button is pressed
     if (downState == LOW) {
-      Pot.decrease(1);  // Decrement
+      decreasePot(1);   // Decrement
       delay(50);  // Small delay for debouncing
     }
 
@@ -544,6 +548,25 @@ void manual()
     }
   }
 
+}
+
+void setWiper(int value) {
+    digitalWrite(CS_PIN, LOW);
+    SPI.transfer(0x00);  // Command byte for wiper 0
+    SPI.transfer(value & 0x7F);  // 7-bit wiper value
+    digitalWrite(CS_PIN, HIGH);
+}
+
+void increasePot(int step) {
+    wiperValue += step;
+    if (wiperValue > 127) wiperValue = 127;
+    setWiper(wiperValue);
+}
+
+void decreasePot(int step) {
+    wiperValue -= step;
+    if (wiperValue < 0) wiperValue = 0;
+    setWiper(wiperValue);
 }
 
 void current()
