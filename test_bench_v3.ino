@@ -99,7 +99,7 @@ const int rstPin = 6;                                                   // Pin c
 
 //Digital potentiometer initialization
 int CS_PIN = 49;                                                        // Chip Select pin for MCP4231
-int wiperValue = 0;                                                     // Stores the current wiper position (0-127 for MCP4231)
+int wiperValue = 127;                                                     // Stores the current wiper position (0-127 for MCP4231)
 
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -394,9 +394,9 @@ void estatico()
 
     // Adjust potentiometer based on the average current
     if (average_current - initial_current < -0.2) {                 // If average current is less than target (below threshold)
-      increasePot(1);                                                // Increment potentiometer
+      decreasePot(1);                                                // Increment potentiometer
     } else if (average_current - initial_current > 0.2) {           // If average current is greater than target (above threshold)
-      decreasePot(1);                                               // Decrement potentiometer
+      increasePot(1);                                              // Decrement potentiometer
     } else {
     // when the average is equal to the value selected, "step" is increment and the sequence continues
       step = 5;
@@ -505,13 +505,13 @@ void manual()
 
     // Increment potentiometer value if the up button is pressed
     if (upState == LOW) {
-      increasePot(1);   // Increment
+      decreasePot(1);         // Increment
       delay(50);  // Small delay for debouncing
     }
 
     // Decrement potentiometer value if the down button is pressed
     if (downState == LOW) {
-      decreasePot(1);   // Decrement
+      increasePot(1);   // Decrement
       delay(50);  // Small delay for debouncing
     }
 
